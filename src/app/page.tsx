@@ -103,9 +103,9 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="w-full flex justify-between items-center px-4 sm:px-6 h-14 border-b border-border">
+      <header className="flex-none w-full flex justify-between items-center px-4 sm:px-6 h-14 border-b border-border">
         <h1 className="font-serif text-xl sm:text-2xl font-semibold">
           Fabula
         </h1>
@@ -145,9 +145,9 @@ export default function Home() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -200 }}
                 transition={{ duration: 0.3 }}
-                {...{ className: "absolute inset-0 flex flex-col p-4 sm:p-6" }}
+                className="absolute inset-0 flex flex-col p-4 sm:p-6"
               >
-                <div className="content-area h-full flex flex-col justify-center py-8">
+                <div className="content-area flex-1 flex flex-col justify-center">
                   <div className="prose dark:prose-invert max-w-none">
                     {pages[currentPage]?.split('\n').map((paragraph, index) => (
                       <p 
@@ -163,7 +163,7 @@ export default function Home() {
             </AnimatePresence>
 
             {/* Page Navigation */}
-            <div className="fixed bottom-20 left-0 right-0 flex justify-center gap-2">
+            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
               <Button
                 variant="outline"
                 size="icon"
@@ -200,7 +200,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center gap-4 p-4">
+          <div className="h-full flex flex-col items-center justify-center gap-4 p-4">
             <h2 className="font-serif text-xl sm:text-2xl text-center">
               Welcome to Fabula
             </h2>
@@ -226,7 +226,7 @@ export default function Home() {
       </main>
 
       {/* Bottom Menu Bar */}
-      <div className="w-full h-14 border-t border-border bg-background/80 backdrop-blur-sm flex items-center justify-around px-4">
+      <div className="flex-none w-full h-14 border-t border-border bg-background/80 backdrop-blur-sm flex items-center justify-around px-4">
         {/* Menu items will go here */}
         <div className="text-sm text-muted-foreground">Menu coming soon...</div>
       </div>
