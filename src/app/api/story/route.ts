@@ -21,8 +21,7 @@ export async function POST(req: Request) {
           - Well-structured with clear narrative flow
           - Rich in vivid, sensory details
           - Engaging and imaginative
-          - Family-friendly and suitable for all ages
-          - Between 300-500 words
+          - Between 1000-5000 words
           If continuing a story, maintain consistency with the existing narrative and add meaningful progression.`
         },
         {
