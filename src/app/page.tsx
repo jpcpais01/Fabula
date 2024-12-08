@@ -2,7 +2,17 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight, Moon, Sun, Palette, BookOpen, Plus, History } from "lucide-react";
+import { 
+  BookOpen, 
+  ChevronLeft, 
+  ChevronRight, 
+  History, 
+  Home as HomeIcon,
+  Loader2, 
+  Moon, 
+  Palette, 
+  Sun 
+} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
@@ -337,8 +347,8 @@ function HomeContent() {
           size="icon"
           onClick={handleNavigation.toNew}
         >
-          <Plus className="h-5 w-5" />
-          <span className="sr-only">New Story</span>
+          <HomeIcon className="h-5 w-5" />
+          <span className="sr-only">Welcome Screen</span>
         </Button>
 
         <Button
@@ -354,7 +364,7 @@ function HomeContent() {
   );
 }
 
-export default function Home() {
+export default function HomePage() {
   return (
     <StoriesProvider>
       <HomeContent />

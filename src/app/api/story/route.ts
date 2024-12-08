@@ -29,7 +29,7 @@ export async function POST(req: Request) {
           content: prompt || defaultPrompt
         }
       ],
-      model: "mixtral-8x7b-32768",
+      model: "llama-3.1-70b-versatile",
       temperature: 0.7,
       max_tokens: 1024,
       top_p: 1,
