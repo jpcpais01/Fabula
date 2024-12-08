@@ -1,101 +1,235 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Loader2, ChevronLeft, ChevronRight, Moon, Sun, Palette } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { useTheme } from "next-themes";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [story, setStory] = useState<string | null>(null);
+  const [pages, setPages] = useState<string[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { theme, setTheme } = useTheme();
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const calculatePages = () => {
+    if (!story || !contentRef.current) return;
+
+    const contentArea = contentRef.current.querySelector('.content-area');
+    if (!contentArea) return;
+
+    const SAFETY_PADDING = 64;
+    const maxHeight = contentArea.clientHeight - SAFETY_PADDING;
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      width: ${contentArea.clientWidth}px;
+      font-size: ${window.innerWidth < 640 ? '14px' : '16px'};
+      line-height: 1.75;
+      font-family: serif;
+      padding: ${SAFETY_PADDING / 2}px 0;
+    `;
+    document.body.appendChild(tempDiv);
+
+    const paragraphs = story.split('\n').filter(p => p.trim());
+    const newPages: string[] = [];
+    let currentPage: string[] = [];
+
+    for (let i = 0; i < paragraphs.length; i++) {
+      const testPage = [...currentPage, paragraphs[i]];
+      tempDiv.innerHTML = testPage.map(p => `
+        <p class="mb-4 font-serif">
+          ${p}
+        </p>
+      `).join('');
+
+      if (tempDiv.offsetHeight - SAFETY_PADDING > maxHeight - 10 && currentPage.length > 0) {
+        newPages.push(currentPage.join('\n'));
+        currentPage = [paragraphs[i]];
+      } else {
+        currentPage = testPage;
+      }
+    }
+
+    if (currentPage.length > 0) {
+      newPages.push(currentPage.join('\n'));
+    }
+
+    document.body.removeChild(tempDiv);
+    setPages(newPages);
+  };
+
+  useEffect(() => {
+    calculatePages();
+    window.addEventListener('resize', calculatePages);
+    return () => window.removeEventListener('resize', calculatePages);
+  }, [story]);
+
+  const generateStory = async (continueStory = false) => {
+    if (isGenerating) return;
+    
+    setIsGenerating(true);
+    try {
+      const response = await fetch('/api/story', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          prompt: continueStory ? story : undefined 
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to generate story');
+
+      const { story: newStoryPart } = await response.json();
+      
+      if (continueStory && story) {
+        setStory(story + '\n\n' + newStoryPart);
+      } else {
+        setStory(newStoryPart);
+        setCurrentPage(0);
+      }
+      
+    } catch (error) {
+      console.error('Error generating story:', error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col">
+      {/* Header */}
+      <header className="w-full flex justify-between items-center px-4 sm:px-6 h-14 border-b border-border">
+        <h1 className="font-serif text-xl sm:text-2xl font-semibold">
+          Fabula
+        </h1>
+        <div className="relative">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="icon">
+                <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0 sepia:-rotate-90 sepia:scale-0" />
+                <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+                <Palette className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all sepia:rotate-0 sepia:scale-100" />
+                <span className="sr-only">Toggle theme</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setTheme("light")}>
+                Light
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>
+                Dark
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("sepia")}>
+                Sepia
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
+      </header>
+
+      {/* Main content */}
+      <main className="flex-1 relative overflow-hidden" ref={contentRef}>
+        {story ? (
+          <div className="h-full">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentPage}
+                initial={{ opacity: 0, x: 200 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -200 }}
+                transition={{ duration: 0.3 }}
+                className="absolute inset-0 flex flex-col p-4 sm:p-6"
+              >
+                <div className="content-area h-full flex flex-col justify-center py-8">
+                  <div className="prose dark:prose-invert max-w-none">
+                    {pages[currentPage]?.split('\n').map((paragraph, index) => (
+                      <p 
+                        key={index} 
+                        className="mb-4 font-serif text-sm sm:text-base leading-relaxed"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Page Navigation */}
+            <div className="fixed bottom-20 left-0 right-0 flex justify-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                disabled={currentPage === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="flex items-center px-3 text-sm font-serif text-muted-foreground">
+                {currentPage + 1} / {pages.length}
+              </span>
+              {currentPage === pages.length - 1 ? (
+                <Button
+                  variant="outline"
+                  onClick={() => generateStory(true)}
+                  disabled={isGenerating}
+                  className="w-24 font-serif text-sm"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Continue"
+                  )}
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setCurrentPage(prev => Math.min(pages.length - 1, prev + 1))}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center gap-4 p-4">
+            <h2 className="font-serif text-xl sm:text-2xl text-center">
+              Welcome to Fabula
+            </h2>
+            <p className="text-center max-w-md text-muted-foreground">
+              Your personal AI storyteller. Click below to start your journey into a world of endless stories.
+            </p>
+            <Button 
+              onClick={() => generateStory()} 
+              disabled={isGenerating}
+              className="font-serif"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Crafting your story...
+                </>
+              ) : (
+                'Begin Your Journey'
+              )}
+            </Button>
+          </div>
+        )}
       </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+      {/* Bottom Menu Bar */}
+      <div className="w-full h-14 border-t border-border bg-background/80 backdrop-blur-sm flex items-center justify-around px-4">
+        {/* Menu items will go here */}
+        <div className="text-sm text-muted-foreground">Menu coming soon...</div>
+      </div>
     </div>
   );
 }
