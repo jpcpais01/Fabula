@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2, ChevronLeft, ChevronRight, Moon, Sun, Palette } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, HTMLMotionProps, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
 
@@ -15,7 +15,7 @@ export default function Home() {
   const contentRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
 
-  const calculatePages = () => {
+  const calculatePages = useCallback(() => {
     if (!story || !contentRef.current) return;
 
     const contentArea = contentRef.current.querySelector('.content-area');
@@ -61,13 +61,13 @@ export default function Home() {
 
     document.body.removeChild(tempDiv);
     setPages(newPages);
-  };
+  }, [story]);
 
   useEffect(() => {
     calculatePages();
     window.addEventListener('resize', calculatePages);
     return () => window.removeEventListener('resize', calculatePages);
-  }, [story]);
+  }, [story, calculatePages]);
 
   const generateStory = async (continueStory = false) => {
     if (isGenerating) return;
@@ -145,7 +145,7 @@ export default function Home() {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -200 }}
                 transition={{ duration: 0.3 }}
-                className="absolute inset-0 flex flex-col p-4 sm:p-6"
+                {...{ className: "absolute inset-0 flex flex-col p-4 sm:p-6" }}
               >
                 <div className="content-area h-full flex flex-col justify-center py-8">
                   <div className="prose dark:prose-invert max-w-none">
