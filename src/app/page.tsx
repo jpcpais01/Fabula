@@ -200,7 +200,7 @@ export default function Home() {
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-4 p-4">
+          <div className="min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center gap-4 p-4">
             <h2 className="font-serif text-xl sm:text-2xl text-center">
               Welcome to Fabula
             </h2>
