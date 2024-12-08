@@ -2,18 +2,22 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, ChevronLeft, ChevronRight, Moon, Sun, Palette } from "lucide-react";
-import { motion, HTMLMotionProps, AnimatePresence } from "framer-motion";
+import { Loader2, ChevronLeft, ChevronRight, Moon, Sun, Palette, BookOpen, Plus, History } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { useTheme } from "next-themes";
+import { StoriesProvider, useStories } from "@/contexts/stories-context";
+import { HistoryView } from "@/components/history-view";
 
-export default function Home() {
+function HomeContent() {
   const [story, setStory] = useState<string | null>(null);
   const [pages, setPages] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [view, setView] = useState<"reading" | "history">("reading");
   const contentRef = useRef<HTMLDivElement>(null);
   const { theme, setTheme } = useTheme();
+  const { addStory, stories, getStory } = useStories();
 
   const calculatePages = useCallback(() => {
     if (!story || !contentRef.current) return;
@@ -88,11 +92,21 @@ export default function Home() {
 
       const { story: newStoryPart } = await response.json();
       
-      if (continueStory && story) {
-        setStory(story + '\n\n' + newStoryPart);
-      } else {
-        setStory(newStoryPart);
+      const updatedStory = continueStory && story 
+        ? story + '\n\n' + newStoryPart 
+        : newStoryPart;
+
+      setStory(updatedStory);
+      
+      if (!continueStory) {
         setCurrentPage(0);
+        addStory(updatedStory);
+      } else {
+        // Find the current story in history and update it
+        const currentStoryId = stories.find(s => s.content === story)?.id;
+        if (currentStoryId) {
+          addStory(updatedStory); // This will update the existing story
+        }
       }
       
     } catch (error) {
@@ -120,15 +134,9 @@ export default function Home() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setTheme("light")}>
-                Light
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("dark")}>
-                Dark
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setTheme("sepia")}>
-                Sepia
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("light")}>Light</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("dark")}>Dark</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setTheme("sepia")}>Sepia</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -136,100 +144,145 @@ export default function Home() {
 
       {/* Main content */}
       <main className="flex-1 relative overflow-hidden" ref={contentRef}>
-        {story ? (
-          <div className="h-full">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPage}
-                initial={{ opacity: 0, x: 200 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -200 }}
-                transition={{ duration: 0.3 }}
-                className="absolute inset-0 flex flex-col p-4 sm:p-6"
-              >
-                <div className="content-area flex-1 flex flex-col justify-center">
-                  <div className="prose dark:prose-invert max-w-none">
-                    {pages[currentPage]?.split('\n').map((paragraph, index) => (
-                      <p 
-                        key={index} 
-                        className="mb-4 font-serif text-sm sm:text-base leading-relaxed"
-                      >
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-
-            {/* Page Navigation */}
-            <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
-                disabled={currentPage === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="flex items-center px-3 text-sm font-serif text-muted-foreground">
-                {currentPage + 1} / {pages.length}
-              </span>
-              {currentPage === pages.length - 1 ? (
-                <Button
-                  variant="outline"
-                  onClick={() => generateStory(true)}
-                  disabled={isGenerating}
-                  className="w-24 font-serif text-sm"
+        <AnimatePresence mode="wait">
+          {view === "history" ? (
+            <HistoryView 
+              onSelectStory={(selectedStory) => {
+                setStory(selectedStory.content);
+                setView("reading");
+                setCurrentPage(0);
+              }} 
+            />
+          ) : story ? (
+            <div className="h-full">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPage}
+                  initial={{ opacity: 0, x: 200 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -200 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0 flex flex-col p-4 sm:p-6"
                 >
-                  {isGenerating ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    "Continue"
-                  )}
-                </Button>
-              ) : (
+                  <div className="content-area flex-1 flex flex-col justify-center">
+                    <div className="prose dark:prose-invert max-w-none">
+                      {pages[currentPage]?.split('\n').map((paragraph, index) => (
+                        <p 
+                          key={index} 
+                          className="mb-4 font-serif text-sm sm:text-base leading-relaxed"
+                        >
+                          {paragraph}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Page Navigation */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2">
                 <Button
                   variant="outline"
                   size="icon"
-                  onClick={() => setCurrentPage(prev => Math.min(pages.length - 1, prev + 1))}
+                  onClick={() => setCurrentPage(prev => Math.max(0, prev - 1))}
+                  disabled={currentPage === 0}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronLeft className="h-4 w-4" />
                 </Button>
-              )}
+                <span className="flex items-center px-3 text-sm font-serif text-muted-foreground">
+                  {currentPage + 1} / {pages.length}
+                </span>
+                {currentPage === pages.length - 1 ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => generateStory(true)}
+                    disabled={isGenerating}
+                    className="w-24 font-serif text-sm"
+                  >
+                    {isGenerating ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      "Continue"
+                    )}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(pages.length - 1, prev + 1))}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="h-full flex flex-col items-center justify-center gap-4 p-4">
-            <h2 className="font-serif text-xl sm:text-2xl text-center">
-              Welcome to Fabula
-            </h2>
-            <p className="text-center max-w-md text-muted-foreground">
-              Your personal AI storyteller. Click below to start your journey into a world of endless stories.
-            </p>
-            <Button 
-              onClick={() => generateStory()} 
-              disabled={isGenerating}
-              className="font-serif"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Crafting your story...
-                </>
-              ) : (
-                'Begin Your Journey'
-              )}
-            </Button>
-          </div>
-        )}
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center gap-4 p-4">
+              <h2 className="font-serif text-xl sm:text-2xl text-center">
+                Welcome to Fabula
+              </h2>
+              <p className="text-center max-w-md text-muted-foreground">
+                Your personal AI storyteller. Click below to start your journey into a world of endless stories.
+              </p>
+              <Button 
+                onClick={() => generateStory()} 
+                disabled={isGenerating}
+                className="font-serif"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Crafting your story...
+                  </>
+                ) : (
+                  'Begin Your Journey'
+                )}
+              </Button>
+            </div>
+          )}
+        </AnimatePresence>
       </main>
 
       {/* Bottom Menu Bar */}
       <div className="flex-none w-full h-14 border-t border-border bg-background/80 backdrop-blur-sm flex items-center justify-around px-4">
-        {/* Menu items will go here */}
-        <div className="text-sm text-muted-foreground">Menu coming soon...</div>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setView("reading")}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span className="sr-only">Reading</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setView("reading");
+            generateStory();
+          }}
+        >
+          <Plus className="h-5 w-5" />
+          <span className="sr-only">New Story</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setView("history")}
+        >
+          <History className="h-5 w-5" />
+          <span className="sr-only">History</span>
+        </Button>
       </div>
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <StoriesProvider>
+      <HomeContent />
+    </StoriesProvider>
   );
 }
